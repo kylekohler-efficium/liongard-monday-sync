@@ -26,7 +26,7 @@ const RISK_INDEX   = { 'Critical': 1, 'High': 2, 'Medium': 3, 'Low': 4 };
 const STATUS_INDEX = { 'New': 1, 'Closed - Complete': 2 };
 
 function liongardAuth() {
-  return 'Basic ' + Buffer.from(`${process.env.LIONGARD_KEY_ID}:${process.env.LIONGARD_KEY_SECRET}`).toString('base64');
+  return Buffer.from(`${process.env.LIONGARD_KEY_ID}:${process.env.LIONGARD_KEY_SECRET}`).toString('base64');
 }
 async function liongardFetch(path) {
   const res = await fetch(`${LIONGARD_BASE}${path}`, { headers: { 'X-ROAR-API-KEY': liongardAuth() } });
