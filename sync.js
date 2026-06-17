@@ -155,48 +155,50 @@ async function main() {
   const existing = await fetchExistingItems();
   console.log(`  Existing items: ${existing.size}`);
 
-  // 2. Stream Liongard pages → upsert each page immediately (no full accumulation)
-  console.log('\n[2/2] Streaming Liongard alerts → Monday.com...');
-  let skip = 0;
-  const pageSize = 100;
+  // 2. Fetch Liongard alerts (API returns all matching results in one call when filtering)
+  console.log('\n[2/2] Fetching Liongard alerts → Monday.com...');
+  const path = `/tasks?\$filter=${filter}`;
+  const data = await liongardFetch(path);
+  const alerts = data.Data ?? data.data ?? data;
+
+  if (!Array.isArray(alerts) || alerts.length === 0) {
+    console.log('  No alerts matched filter.');
+    return;
+  }
+  console.log(`  Fetched ${alerts.length} alerts`);
+
   let created = 0, updated = 0, errors = 0, reqCount = 0;
+  const processed = new Set(); // dedupe guard
 
-  while (true) {
-    const path = `/tasks?\$filter=${filter}&\$top=${pageSize}&\$skip=${skip}`;
-    const data = await liongardFetch(path);
-    const items = data.Data ?? data.data ?? data;
+  for (let i = 0; i < alerts.length; i++) {
+    const alert = alerts[i];
+    const alertIdStr = String(alert.ID);
 
-    if (!Array.isArray(items) || items.length === 0) break;
-    console.log(`  Page skip=${skip}: ${items.length} alerts`);
+    if (processed.has(alertIdStr)) continue;
+    processed.add(alertIdStr);
 
-    for (const alert of items) {
-      const colVals = buildColumnValues(alert);
-      const alertIdStr = String(alert.ID);
+    const colVals = buildColumnValues(alert);
 
-      try {
-        if (existing.has(alertIdStr)) {
-          await updateItem(existing.get(alertIdStr), colVals);
-          updated++;
-        } else {
-          await createItem(alert, colVals);
-          created++;
-        }
-      } catch (err) {
-        console.error(`  Error on alert ${alert.ID}: ${err.message}`);
-        errors++;
-      }
-
-      reqCount++;
-      if (reqCount % 50 === 0) {
-        console.log(`  Progress: ${reqCount} synced (created: ${created}, updated: ${updated}, errors: ${errors})`);
-        await sleep(2000);
+    try {
+      if (existing.has(alertIdStr)) {
+        await updateItem(existing.get(alertIdStr), colVals);
+        updated++;
       } else {
-        await sleep(100);
+        await createItem(alert, colVals);
+        created++;
       }
+    } catch (err) {
+      console.error(`  Error on alert ${alert.ID}: ${err.message}`);
+      errors++;
     }
 
-    if (items.length < pageSize) break;
-    skip += pageSize;
+    reqCount++;
+    if (reqCount % 50 === 0) {
+      console.log(`  Progress: ${reqCount} synced (created: ${created}, updated: ${updated}, errors: ${errors})`);
+      await sleep(2000);
+    } else {
+      await sleep(100);
+    }
   }
 
   console.log(`\n✓ Done. Created: ${created}, Updated: ${updated}, Errors: ${errors}`);
