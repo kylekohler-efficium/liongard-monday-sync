@@ -18,13 +18,10 @@ const COL = {
   inspectorType: 'text_mm4dhjem',
   dateOpened:    'date_mm4dhx6g',
   dateRemediated:'date_mm4dwxcd',
-  riskLevel:     'color_mm4d72mp',
-  alertStatus:   'color_mm4d368q',
+    riskLevel:     'text_mm4dw2w',
+    alertStatus:   'text_mm4d39y3',
   alertId:       'text_mm4d721g',
 };
-
-const RISK_INDEX   = { 'Critical': 1, 'High': 2, 'Medium': 3, 'Low': 4 };
-const STATUS_INDEX = { 'New': 1, 'Closed - Complete': 2 };
 
 // Only sync: all open alerts + alerts closed within the last 90 days
 const CUTOFF_DAYS = 90;
@@ -117,8 +114,8 @@ function buildColumnValues(alert) {
     [COL.company]:       alert.Environment?.Name || '',
     [COL.inspectorType]: parseInspectorType(alert.Name),
     [COL.dateOpened]:    formatDate(alert.CreatedOn)  ? { date: formatDate(alert.CreatedOn) }  : null,
-    [COL.riskLevel]:     RISK_INDEX[priority] != null  ? { index: RISK_INDEX[priority] }  : null,
-    [COL.alertStatus]:   STATUS_INDEX[status] != null  ? { index: STATUS_INDEX[status] }  : null,
+        [COL.riskLevel]:     priority || null,
+        [COL.alertStatus]:   status || null,
   };
 
   if (isClosed && alert.UpdatedOn) {
